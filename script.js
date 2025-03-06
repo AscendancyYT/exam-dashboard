@@ -1,7 +1,7 @@
 let students = JSON.parse(localStorage.getItem("students")) || [];
 let currentStudent = null;
 const botToken = "8097728064:AAE_JtxnYG1tfIcgNiIgTyvK8n7kO0B5Mvc";
-const updateChatId = "-1002407650992";
+const updateChatId = "-1002361956454";
 const apiUrl = "https://67c8964c0acf98d07087272b.mockapi.io/exams";
 
 async function fetchStudents() {
