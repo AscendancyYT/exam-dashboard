@@ -1,342 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Examiner Dashboard</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: #1a1a1a;
-            color: #fff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .container {
-            width: 90%;
-            max-width: 800px;
-            padding: 20px;
-        }
-        .search-bar {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 20px;
-            border: none;
-            border-radius: 20px;
-            background-color: #2b2b2b;
-            color: #fff;
-            font-size: 16px;
-            outline: none;
-            transition: all 0.3s ease;
-        }
-        .search-bar:focus {
-            background-color: #3a3a3a;
-            box-shadow: 0 0 5px #0a3d62;
-        }
-        .student-list {
-            list-style: none;
-            padding: 0;
-        }
-        .student-item {
-            background-color: #2b2b2b;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 15px;
-            text-align: center;
-            cursor: pointer;
-            transition: transform 0.2s ease, background-color 0.3s ease;
-        }
-        .student-item:hover {
-            transform: scale(1.02);
-            background-color: #3a3a3a;
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            justify-content: center;
-            align-items: center;
-            animation: fadeIn 0.3s ease;
-        }
-        .modal-content {
-            background-color: #2b2b2b;
-            padding: 20px;
-            border-radius: 20px;
-            width: 90%;
-            max-width: 400px;
-            text-align: center;
-            box-shadow: 0 0 10px #0a3d62;
-            transform: translateY(-50px);
-            animation: slideIn 0.3s ease forwards;
-        }
-        .modal-buttons button {
-            padding: 10px 20px;
-            margin: 5px;
-            border: none;
-            border-radius: 15px;
-            background-color: #0a3d62;
-            color: #fff;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        .modal-buttons button:hover {
-            background-color: #0f5b92;
-        }
-        .modal-buttons button.delete {
-            background-color: #b71c1c;
-        }
-        .modal-buttons button.delete:hover {
-            background-color: #d32f2f;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        @keyframes slideIn {
-            from { transform: translateY(-50px); }
-            to { transform: translateY(0); }
-        }
-        @media (max-width: 600px) {
-            .modal-content {
-                width: 85%;
-            }
-        }
-    </style>
-</head>
-<body>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
     <div class="container">
-        <input type="text" class="search-bar" placeholder="Search students..." onkeyup="searchStudents()">
-        <ul class="student-list" id="studentList"></ul>
+      <input
+        type="text"
+        class="search-bar"
+        placeholder="Search students..."
+        onkeyup="searchStudents()"
+      />
+      <ul class="student-list" id="studentList"></ul>
     </div>
     <div class="modal" id="studentModal">
-        <div class="modal-content">
-            <h2 id="modalName"></h2>
-            <p>ID: <span id="modalId"></span></p>
-            <p>Exam Date: <span id="modalDate"></span></p>
-            <p>Telegram: <span id="modalTelegram"></span></p>
-            <p>Score (SC): <span id="modalSC"></span></p>
-            <p>OG: <span id="modalOG"></span></p>
-            <div class="modal-buttons">
-                <button onclick="updateScore(-10)">-10 SC</button>
-                <button onclick="closeModal()">Close</button>
-                <button onclick="updateScore(10)">+10 SC</button>
-                <button class="delete" onclick="deleteStudent()">Delete</button>
-            </div>
+      <div class="modal-content">
+        <h2 id="modalName"></h2>
+        <p>ID: <span id="modalId"></span></p>
+        <p>Exam Date: <span id="modalDate"></span></p>
+        <p>Telegram: <span id="modalTelegram"></span></p>
+        <p>Score (SC): <span id="modalSC"></span></p>
+        <p>OG: <span id="modalOG"></span></p>
+        <div class="modal-buttons">
+          <button onclick="updateScore(-10)">-10 SC</button>
+          <button onclick="closeModal()">Close</button>
+          <button onclick="updateScore(10)">+10 SC</button>
+          <button class="delete" onclick="deleteStudent()">Delete</button>
         </div>
+      </div>
     </div>
 
-    <script>
-        let students = JSON.parse(localStorage.getItem('students')) || [];
-        let currentStudent = null;
-        const botToken = '8097728064:AAE_JtxnYG1tfIcgNiIgTyvK8n7kO0B5Mvc';
-        const registrationChatId = '-1002493313713';
-        const updateChatId = '-1002361956454';
-        let lastUpdateId = localStorage.getItem('lastUpdateId') ? parseInt(localStorage.getItem('lastUpdateId')) : 0;
-
-        async function fetchStudents() {
-            const url = `https://api.telegram.org/bot${botToken}/getUpdates?chat_id=${registrationChatId}&offset=${lastUpdateId + 1}`;
-            console.log('Fetching from URL:', url);
-
-            try {
-                const response = await fetch(url);
-                console.log('Response Status:', response.status, response.statusText);
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Fetch failed with status:', response.status, 'Response:', errorText);
-                    throw new Error(`HTTP error! Status: ${response.status} - ${errorText}`);
-                }
-
-                const data = await response.json();
-                console.log('Telegram API Full Response:', JSON.stringify(data, null, 2));
-
-                if (!data.ok) {
-                    console.error('Telegram API Error:', data.description, 'Code:', data.error_code);
-                    throw new Error(`Telegram API error: ${data.description} (Code: ${data.error_code})`);
-                }
-
-                console.log('Number of updates received:', data.result.length);
-                if (data.result.length > 0) {
-                    lastUpdateId = Math.max(...data.result.map(u => u.update_id));
-                    localStorage.setItem('lastUpdateId', lastUpdateId);
-                    console.log('Updated lastUpdateId:', lastUpdateId);
-
-                    const newStudents = parseRegistrationMessages(data.result);
-                    console.log('New Students:', newStudents);
-
-                    // Add new students, avoiding duplicates by message_id
-                    newStudents.forEach(newStudent => {
-                        if (!students.some(s => s.message_id === newStudent.message_id)) {
-                            students.push(newStudent);
-                        }
-                    });
-                    localStorage.setItem('students', JSON.stringify(students));
-                    console.log('Updated Students:', students);
-                }
-                renderStudents();
-            } catch (error) {
-                console.error('Error fetching students:', error.message, error.stack);
-                alert('Failed to load students from Telegram. Check console for details.');
-            }
-        }
-
-        function parseRegistrationMessages(updates) {
-            const parsedStudents = [];
-            updates.forEach((update, index) => {
-                console.log(`Processing update #${index}:`, update);
-
-                const msg = update.channel_post || update.message;
-                if (msg && msg.text) {
-                    const text = msg.text;
-                    console.log('Message text:', text);
-
-                    if (text.startsWith('📌 New Registration!')) {
-                        const lines = text.split('\n').filter(line => line.trim() !== '');
-                        console.log('Message lines:', lines);
-
-                        const student = {
-                            message_id: msg.message_id,
-                            name: lines[1]?.replace('👤 Name: ', '').trim() || '',
-                            phone: lines[2]?.replace('📞 Phone: ', '').trim() || '',
-                            telegram: lines[3]?.replace('✈️ Telegram: ', '').trim() || '',
-                            id: lines[4]?.replace('🆔 ID: ', '').trim() || '',
-                            timestamp: lines[5]?.replace('📅 Exam Date: ', '').trim() || '',
-                            sc: 100,
-                            og: 0
-                        };
-
-                        if (student.name && student.id) {
-                            parsedStudents.push(student);
-                            console.log('Added student:', student);
-                        } else {
-                            console.warn('Incomplete student data:', student);
-                        }
-                    } else {
-                        console.log('Message skipped: Not a registration');
-                    }
-                } else {
-                    console.log('No text found in this update');
-                }
-            });
-            return parsedStudents;
-        }
-
-        function renderStudents(filter = '') {
-            const list = document.getElementById('studentList');
-            list.innerHTML = '';
-            console.log('Rendering students with filter:', filter, 'Total students:', students.length);
-            students
-                .filter(student => student.name.toLowerCase().includes(filter.toLowerCase()))
-                .forEach(student => {
-                    const li = document.createElement('li');
-                    li.className = 'student-item';
-                    li.textContent = student.name;
-                    li.onclick = () => showModal(student);
-                    list.appendChild(li);
-                });
-            if (list.children.length === 0) {
-                console.warn('No students rendered. Displaying placeholder.');
-                list.innerHTML = '<li>No students found</li>';
-            }
-        }
-
-        function searchStudents() {
-            const query = document.querySelector('.search-bar').value;
-            renderStudents(query);
-        }
-
-        function showModal(student) {
-            currentStudent = student;
-            document.getElementById('modalName').textContent = student.name;
-            document.getElementById('modalId').textContent = student.id;
-            document.getElementById('modalDate').textContent = student.timestamp;
-            document.getElementById('modalTelegram').textContent = student.telegram;
-            document.getElementById('modalSC').textContent = student.sc;
-            document.getElementById('modalOG').textContent = student.og;
-            document.getElementById('studentModal').style.display = 'flex';
-        }
-
-        function closeModal() {
-            document.getElementById('studentModal').style.display = 'none';
-        }
-
-        function updateScore(change) {
-            currentStudent.sc += change;
-            if (currentStudent.sc < 0) currentStudent.sc = 0;
-
-            const milestones = [150, 200, 250, 300];
-            const newOG = milestones.filter(m => currentStudent.sc >= m).length;
-            currentStudent.og = newOG;
-
-            document.getElementById('modalSC').textContent = currentStudent.sc;
-            document.getElementById('modalOG').textContent = currentStudent.og;
-
-            localStorage.setItem('students', JSON.stringify(students)); // Save updated scores
-
-            const message = currentStudent.sc === 0 
-                ? `User ${currentStudent.name} got 0 SC!!!! 😱`
-                : `Student Score Update: 📝\nCandidate Name: #${currentStudent.name}\nNew SC: ${currentStudent.sc}\nChange: ${change > 0 ? '+10 SC' : '-10 SC'} 🚀`;
-            sendTelegramMessage(message);
-        }
-
-        async function deleteStudent() {
-            const message = `Student Removed: 🗑️\nCandidate Name: #${currentStudent.name}\nTelegram: ${currentStudent.telegram}`;
-            await sendTelegramMessage(message);
-
-            // Delete the original message from Telegram
-            const deleteUrl = `https://api.telegram.org/bot${botToken}/deleteMessage`;
-            try {
-                const response = await fetch(deleteUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        chat_id: registrationChatId,
-                        message_id: currentStudent.message_id
-                    })
-                });
-                if (!response.ok) throw new Error(`Failed to delete message: ${response.status}`);
-                console.log('Telegram message deleted:', currentStudent.message_id);
-            } catch (error) {
-                console.error('Error deleting Telegram message:', error);
-            }
-
-            students = students.filter(s => s.message_id !== currentStudent.message_id);
-            localStorage.setItem('students', JSON.stringify(students));
-            console.log('Student deleted:', currentStudent, 'Updated students:', students);
-
-            closeModal();
-            renderStudents();
-        }
-
-        async function sendTelegramMessage(message) {
-            const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        chat_id: updateChatId,
-                        text: message,
-                    }),
-                });
-                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-                const data = await response.json();
-                console.log('Telegram Send Response:', data);
-            } catch (error) {
-                console.error('Error sending Telegram message:', error);
-                alert('Failed to send Telegram message.');
-            }
-        }
-
-        fetchStudents();
-        renderStudents(); // Initial render from localStorage
-    </script>
-</body>
+    <script src="./script.js"></script>
+  </body>
 </html>
